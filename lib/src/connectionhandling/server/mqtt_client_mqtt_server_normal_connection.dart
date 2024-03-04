@@ -21,78 +21,76 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
 
   /// Connect
   @override
-  Future<MqttClientConnectionStatus?> connect(String server, int port) {
-    final completer = Completer<MqttClientConnectionStatus?>();
+  Future<void> connect(String server, int port) async {
     MqttLogger.log('MqttNormalConnection::connect - entered');
     try {
       // Connect and save the socket.
-      Socket.connect(server, port).then((socket) {
-        // Socket options
-        final applied = _applySocketOptions(socket, socketOptions);
-        if (applied) {
-          MqttLogger.log(
-              'MqttNormalConnection::connect - socket options applied');
-        }
-        client = socket;
-        readWrapper = ReadWrapper();
-        messageStream = MqttByteBuffer(typed.Uint8Buffer());
-        _startListening();
-        completer.complete();
-      }).catchError((e) {
-        onError(e);
-        completer.completeError(e);
+      final socket = await Socket.connect(server, port);
+      socket.done
+          .then<void>((done) => {print("SOCKET DONE: $done")})
+          .catchError((e) {
+        MqttLogger.log(
+            'MqttNormalConnection::connect - error during socket lifecycle: $e');
       });
+      // Socket options
+      final applied = _applySocketOptions(socket, socketOptions);
+      if (applied) {
+        MqttLogger.log(
+            'MqttNormalConnection::connect - socket options applied');
+      }
+      client = socket;
+      readWrapper = ReadWrapper();
+      messageStream = MqttByteBuffer(typed.Uint8Buffer());
+      _startListening();
     } on SocketException catch (e) {
+      onError(e);
       final message =
           'MqttNormalConnection::connect - The connection to the message broker '
           '{$server}:{$port} could not be made. Error is ${e.toString()}';
-      completer.completeError(e);
       throw NoConnectionException(message);
     } on Exception catch (e) {
-      completer.completeError(e);
+      onError(e);
       final message =
           'MqttNormalConnection::Connect - The connection to the message '
           'broker {$server}:{$port} could not be made.';
       throw NoConnectionException(message);
     }
-    return completer.future;
   }
 
   /// Connect Auto
   @override
-  Future<MqttClientConnectionStatus?> connectAuto(String server, int port) {
-    final completer = Completer<MqttClientConnectionStatus?>();
+  Future<void> connectAuto(String server, int port) async {
     MqttLogger.log('MqttNormalConnection::connectAuto - entered');
     try {
       // Connect and save the socket.
-      Socket.connect(server, port).then((socket) {
-        // Socket options
-        final applied = _applySocketOptions(socket, socketOptions);
-        if (applied) {
-          MqttLogger.log(
-              'MqttNormalConnection::connectAuto - socket options applied');
-        }
-        client = socket;
-        _startListening();
-        completer.complete();
-      }).catchError((e) {
-        onError(e);
-        completer.completeError(e);
+      final socket = await Socket.connect(server, port);
+      socket.done
+          .then<void>((done) => {print("SOCKET DONE: $done")})
+          .catchError((e) {
+        MqttLogger.log(
+            'MqttNormalConnection::connect - error during socket lifecycle: $e');
       });
+      // Socket options
+      final applied = _applySocketOptions(socket, socketOptions);
+      if (applied) {
+        MqttLogger.log(
+            'MqttNormalConnection::connectAuto - socket options applied');
+      }
+      client = socket;
+      _startListening();
     } on SocketException catch (e) {
       final message =
           'MqttNormalConnection::connectAuto - The connection to the message broker '
           '{$server}:{$port} could not be made. Error is ${e.toString()}';
-      completer.completeError(e);
+      onError(e);
       throw NoConnectionException(message);
     } on Exception catch (e) {
-      completer.completeError(e);
+      onError(e);
       final message =
           'MqttNormalConnection::ConnectAuto - The connection to the message '
           'broker {$server}:{$port} could not be made.';
       throw NoConnectionException(message);
     }
-    return completer.future;
   }
 
   /// Sends the message in the stream to the broker.
