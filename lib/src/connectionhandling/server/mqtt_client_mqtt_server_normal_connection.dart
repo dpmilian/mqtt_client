@@ -21,17 +21,19 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
 
   /// Connect
   @override
-  Future<void> connect(String server, int port) async {
+  Future<Socket> connect(String server, int port) async {
     MqttLogger.log('MqttNormalConnection::connect - entered');
     try {
       // Connect and save the socket.
       final socket = await Socket.connect(server, port);
-      socket.done
-          .then<void>((done) => {print("SOCKET DONE: $done")})
-          .catchError((e) {
+      unawaited(socket.done.then<Socket>((done) {
+        MqttLogger.log('SOCKET DONE: $done');
+        return socket;
+      }).catchError((e) {
         MqttLogger.log(
             'MqttNormalConnection::connect - error during socket lifecycle: $e');
-      });
+        return socket;
+      }));
       // Socket options
       final applied = _applySocketOptions(socket, socketOptions);
       if (applied) {
@@ -42,6 +44,7 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
       readWrapper = ReadWrapper();
       messageStream = MqttByteBuffer(typed.Uint8Buffer());
       _startListening();
+      return socket;
     } on SocketException catch (e) {
       onError(e);
       final message =
@@ -59,17 +62,20 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
 
   /// Connect Auto
   @override
-  Future<void> connectAuto(String server, int port) async {
+  Future<Socket> connectAuto(String server, int port) async {
     MqttLogger.log('MqttNormalConnection::connectAuto - entered');
     try {
       // Connect and save the socket.
       final socket = await Socket.connect(server, port);
-      socket.done
-          .then<void>((done) => {print("SOCKET DONE: $done")})
-          .catchError((e) {
+      unawaited(socket.done.then<Socket>((done) {
+        MqttLogger.log('SOCKET DONE: $done');
+        return socket;
+      }).catchError((e) {
         MqttLogger.log(
             'MqttNormalConnection::connect - error during socket lifecycle: $e');
-      });
+        return socket;
+      }));
+
       // Socket options
       final applied = _applySocketOptions(socket, socketOptions);
       if (applied) {
@@ -78,6 +84,7 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
       }
       client = socket;
       _startListening();
+      return socket;
     } on SocketException catch (e) {
       final message =
           'MqttNormalConnection::connectAuto - The connection to the message broker '
