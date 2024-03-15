@@ -21,20 +21,12 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
 
   /// Connect
   @override
-  Future<Socket> connect(String server, int port) async {
+  Future<Socket?> connect(String server, int port) async {
+    final completer = Completer<Socket>();
     MqttLogger.log('MqttNormalConnection::connect - entered');
     try {
       // Connect and save the socket.
       final socket = await Socket.connect(server, port);
-      unawaited(socket.done.then<Socket>((done) {
-        MqttLogger.log('SOCKET DONE: $done');
-        return socket;
-      }).catchError((e) {
-        MqttLogger.log(
-            'MqttNormalConnection::connect - error during socket lifecycle: $e');
-        return socket;
-      }));
-      // Socket options
       final applied = _applySocketOptions(socket, socketOptions);
       if (applied) {
         MqttLogger.log(
@@ -44,7 +36,19 @@ class MqttServerNormalConnection extends MqttServerConnection<Socket> {
       readWrapper = ReadWrapper();
       messageStream = MqttByteBuffer(typed.Uint8Buffer());
       _startListening();
-      return socket;
+      completer.complete(socket);
+
+      // final done = await socket.done;
+      // MqttLogger.log('SOCKET DONE: $done');
+      // completer.completeError('The SOCKET IS DONE $done');
+      unawaited(socket.done.catchError((error) {
+        MqttLogger.log('Socket.done error $error');
+        // completer.completeError(error);
+      }));
+
+      return completer.future;
+
+      // Socket options
     } on SocketException catch (e) {
       onError(e);
       final message =
